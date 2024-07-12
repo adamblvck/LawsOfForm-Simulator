@@ -1,0 +1,57 @@
+.toolbar {
+	display: flex;
+    /* justify-content: flex-start; */
+    position: absolute;
+    width: 100px;
+    left: 15px;
+    top: 55px;
+    z-index: 15;
+    flex-direction: column;
+    /* height: 100%; */
+}
+
+#frequencyDisplay {
+    align-self: center;
+    color: #ccc;
+}
+
+#stepCounter {
+    align-self: center;
+    color: #ccc;
+}
+
+#playButton {
+	border-radius: 15px;
+    border-color: #ccc;
+    color: #ccc;
+    background-color: #333;
+    border-width: 1px;
+    margin: 5px 15px;
+    padding: 5px 15px;
+}
+
+#exportCsvButton {
+    border-radius: 15px;
+    border-color: #ccc;
+    color: #ccc;
+    background-color: #333;
+    border-width: 1px;
+    margin: 5px 15px;
+    padding: 5px 15px;
+}
+
+#addMode {
+	background: #333;
+    color: #ccc;
+    border-radius: 15px;
+}
+
+#metric-avg-depth{
+    color: #ccc;
+    align-self: center;
+}
+
+#metric-avg-entropy{
+    color: #ccc;
+    align-self: center;
+}

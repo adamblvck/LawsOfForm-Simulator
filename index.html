@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assembly Driven Laws of Form Playground</title>
+    <link href="https://fonts.googleapis.com/css?family=Nunito&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/toolbar.css">
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="./css/button.css">
+    <link href='./css/play-pause.css' rel='stylesheet'>
+</head>
+<body>
+
+    <!-- toolbar -->
+    <div class="toolbar">
+        <select id="addMode">
+            <option value="child">Add Child</option>
+            <option value="sibling">Add Sibling</option>
+        </select>
+        <button id="playButton">Play</button>
+        <input type="range" id="frequencySlider" min="2" max="800" value="450">
+        <span id="frequencyDisplay">1 Hz</span>
+        <span id="stepCounter">Steps: 0</span>
+        <button id="exportCsvButton">Save CSV</button>
+
+        <span id="metric-avg-depth">---</span>
+        <span id="metric-avg-entropy">---</span>
+        
+    </div>
+
+    <!-- Title -->
+	<h1>Assembly Driven Laws of Form Playground</h1>
+
+    <!-- Main content -->
+    <div id="maincontent">
+        <div id="container">
+            <canvas id="myCanvas" width="100%" height="100%"></canvas>
+        </div>
+        <div id="chartContainer">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script type="module" src="./js/lodash.min.js"></script>
+    <script type="text/javascript" src="lof.js"></script>
+    <script src="./js/chart.js"></script>
+    <script type="text/javascript" src="script.js"></script>
+    
+</body>
+</html>
