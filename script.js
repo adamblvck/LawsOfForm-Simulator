@@ -424,11 +424,12 @@ function updateMetrics(element) {
     metrics.push({ step, element, entropy, maxDepth, assembley, omega, order});
 
     if (step % 20 == 0){
-        chart.data.datasets[0].data.push({x: step, y: entropy});
-        chart.data.datasets[1].data.push({x: step, y: maxDepth});
-        chart.data.datasets[2].data.push({x: step, y: assembley});
-        chart.data.datasets[3].data.push({x: step, y: omega});
-        chart.data.datasets[4].data.push({x: step, y: order});
+        chart.data.labels.push(step);
+        chart.data.datasets[0].data.push(entropy);
+        chart.data.datasets[1].data.push(maxDepth);
+        chart.data.datasets[2].data.push(assembley);
+        chart.data.datasets[3].data.push(omega);
+        chart.data.datasets[4].data.push(order);
         chart.update();
     }
 
@@ -472,33 +473,53 @@ function initializeChartScatter() {
         type: 'scatter',
         data: {
             datasets: [{
-                label: 'Entropy vs Assembly',
+                label: 'Entropy',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                xAxisID: 'yEntropy',
+                fill: false,
+            }, {
+                label: 'Max Depth',
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',
-                data: [],  // Initialize with empty data array
+                yAxisID: 'yDepth',
                 fill: false,
-            }]
+            },
+            {
+                label: 'Assembley',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                yAxisID: 'Assembley Index',
+                fill: false,
+            },
+            {
+                label: 'Omega',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                yAxisID: 'Omega',
+                fill: false,
+            },
+            {
+                label: 'Order',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                yAxisID: 'Order',
+                fill: false,
+            }
+        ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: {
+                Entropy: {
                     type: 'linear',
                     position: 'bottom',
-                    title: {
-                        display: true,
-                        text: 'Entropy'
-                    }
                 },
-                y: {
+                Assembley: {
                     type: 'linear',
                     position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Assembly'
-                    }
-                }
+                },
             },
         },
     });
