@@ -62,32 +62,28 @@ function calculateAssemblyIndex(structure) {
 }
 
 let step = 0;
-
 let counter = [0,0,0,0];
+let selectedPoints = [];
 
 // Operation functions
 function air(structure) {
-    const randomPath = getRandomPath(structure);
-    addChild(randomPath);
     counter[0]+=1;
+    return LoFCancel(structure);
 }
 
 function fire(structure) {
-    // console.log("fire")
-    duplicateRandomForm(structure);
     counter[1]+=1;
+    return LoFConfirm(structure);
 }
 
 function water(structure) {
-    // console.log("water")
-    concatenateRandomForms(structure);
     counter[2]+=1;
+    return LoFCondense(structure);
 }
 
 function earth(structure) {
-    // console.log("earth")
-    deleteRandomPrunableArray(structure);
     counter[3]+=1;
+    return LofCompensate(structure);
 }
 
 // Function to get a random path in the structure
@@ -214,16 +210,20 @@ document.getElementById('playButton').addEventListener('click', () => {
             const randomNumber = Math.random() * 100; // Generate a number between 0 and 100
             let element = 'spirit';
             if (randomNumber < 25) {
-                air(structure); // 30% chance for air
+                // structure = air(structure); // 30% chance for air
+                structure = LoFCancel(structure)
                 element = '=[[]]'
             } else if (randomNumber < 50) {
-                fire(structure); // Additional 30% chance for fire
+                // structure = fire(structure); // Additional 30% chance for fire
+                structure = LoFConfirm(structure)
                 element = '[A]=[A][A]'
             } else if (randomNumber < 75) {
-                water(structure); // Additional 20% chance for water
+                // structure = water(structure); // Additional 20% chance for water
+                structure = LoFCondense(structure)
                 element = '[A][A]=[A]'
             } else {
-                earth(structure); // Remaining 20% chance for earth
+                // structure = earth(structure); // Remaining 20% chance for earth
+                structure = LofCompensate(structure)
                 element = '[[A]]=A'
             }
             updateMetrics(element);
@@ -233,29 +233,29 @@ document.getElementById('playButton').addEventListener('click', () => {
 });
 
 // Operation functions
-function air(structure) {
-    const randomPath = getRandomPath(structure);
-    addChild(randomPath);
-    counter[0]+=1;
-}
+// function air(structure) {
+//     const randomPath = getRandomPath(structure);
+//     addChild(randomPath);
+//     counter[0]+=1;
+// }
 
-function fire(structure) {
-    // console.log("fire")
-    duplicateRandomForm(structure);
-    counter[1]+=1;
-}
+// function fire(structure) {
+//     // console.log("fire")
+//     duplicateRandomForm(structure);
+//     counter[1]+=1;
+// }
 
-function water(structure) {
-    // console.log("water")
-    concatenateRandomForms(structure);
-    counter[2]+=1;
-}
+// function water(structure) {
+//     // console.log("water")
+//     concatenateRandomForms(structure);
+//     counter[2]+=1;
+// }
 
-function earth(structure) {
-    // console.log("earth")
-    deleteRandomPrunableArray(structure);
-    counter[3]+=1;
-}
+// function earth(structure) {
+//     // console.log("earth")
+//     deleteRandomPrunableArray(structure);
+//     counter[3]+=1;
+// }
 
 function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath();
@@ -415,6 +415,10 @@ const calculateAverages = () => {
 
 }
 
+const update_chart_data = async (chart) => {
+    chart.data.datasets[0].data.push({x: metrics[metrics.length-1].entropy, y: metrics[metrics.length-1].assembley});
+}
+
 function updateMetrics(element) {
     const entropy = calculateEntropy(structure);
     const maxDepth = calculateMaxDepth(structure);
@@ -423,13 +427,19 @@ function updateMetrics(element) {
     const order = formCount(structure);
     metrics.push({ step, element, entropy, maxDepth, assembley, omega, order});
 
-    if (step % 20 == 0){
-        chart.data.labels.push(step);
-        chart.data.datasets[0].data.push(entropy);
-        chart.data.datasets[1].data.push(maxDepth);
-        chart.data.datasets[2].data.push(assembley);
-        chart.data.datasets[3].data.push(omega);
-        chart.data.datasets[4].data.push(order);
+    // if (step % 20 == 0){
+    //     chart.data.labels.push(step);
+    //     chart.data.datasets[0].data.push(entropy);
+    //     chart.data.datasets[1].data.push(maxDepth);
+    //     chart.data.datasets[2].data.push(assembley);
+    //     chart.data.datasets[3].data.push(omega);
+    //     chart.data.datasets[4].data.push(order);
+    //     chart.update();
+    // }
+
+    update_chart_data(chart)
+
+    if (step % 100 == 0){
         chart.update();
     }
 
@@ -442,7 +452,7 @@ function updateMetrics(element) {
     }
 }
 
-let structure = []; // array to store LoF Structure
+let structure = [[]]; // array to store LoF Structure
 let metrics = []; // Array to store metrics
 let metrics_rt = [
     // depth
@@ -473,57 +483,47 @@ function initializeChartScatter() {
         type: 'scatter',
         data: {
             datasets: [{
-                label: 'Entropy',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                borderColor: 'rgba(255, 99, 132, 1)',
-                xAxisID: 'yEntropy',
-                fill: false,
-            }, {
-                label: 'Max Depth',
+                label: 'Entropy vs Assembly',
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',
-                yAxisID: 'yDepth',
+                data: [],  // Initialize with empty data array
                 fill: false,
-            },
-            {
-                label: 'Assembley',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                yAxisID: 'Assembley Index',
-                fill: false,
-            },
-            {
-                label: 'Omega',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                yAxisID: 'Omega',
-                fill: false,
-            },
-            {
-                label: 'Order',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                yAxisID: 'Order',
-                fill: false,
-            }
-        ],
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                Entropy: {
+                x: {
                     type: 'linear',
                     position: 'bottom',
+                    title: {
+                        display: true,
+                        text: 'Entropy'
+                    }
                 },
-                Assembley: {
-                    type: 'linear',
+                y: {
+                    type: 'logarithmic',
                     position: 'left',
-                },
+                    title: {
+                        display: true,
+                        text: 'Assembly',
+                    }
+                }
             },
         },
+        onClick: function(evt, activeElements) {
+            if (activeElements.length > 0) {
+                const datasetIndex = activeElements[0].datasetIndex;
+                const index = activeElements[0].index;
+                const selectedData = chart.data.datasets[datasetIndex].data[index];
+                selectedPoints.push(selectedData);
+                console.log('Selected Points:', selectedPoints);
+            }
+        }
     });
 }
+
 
 function initializeChart() {
     const ctx = document.getElementById('myChart').getContext('2d');
