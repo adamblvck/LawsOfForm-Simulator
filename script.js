@@ -1,5 +1,35 @@
 // const { calculateAssemblyIndex} = require('./assembley.js');
 
+const lof_policy = {
+    lof_weights: [1, 1, 1, 1]
+};
+
+const sliders = document.querySelectorAll('.slider');
+const percents = [
+    document.getElementById('percent1'),
+    document.getElementById('percent2'),
+    document.getElementById('percent3'),
+    document.getElementById('percent4')
+];
+
+sliders.forEach((slider, index) => {
+    slider.addEventListener('input', () => {
+        lof_policy.lof_weights[index] = parseInt(slider.value);
+        updatePercentages();
+    });
+});
+
+function updatePercentages() {
+    const total = lof_policy.lof_weights.reduce((acc, val) => acc + val, 0);
+    lof_policy.lof_weights.forEach((value, index) => {
+        const percent = total > 0 ? (value / total * 100).toFixed(1) : 0;
+        percents[index].textContent = `${percent}%`;
+    });
+}
+
+// Initialize percentages
+updatePercentages();
+
 function formCount(structure) {
     function countSubarrays(arr) {
         if (!Array.isArray(arr)) {
@@ -199,6 +229,17 @@ document.getElementById('frequencySlider').addEventListener('input', function() 
     document.getElementById('frequencyDisplay').textContent = this.value + ' Hz';
 });
 
+let steps = 0;
+
+// Clear button functionality
+document.getElementById('clearButton').addEventListener('click', () => {
+    // reset all important and relevant variables
+    structure = [[]];
+    redrawCanvas();
+    chart.data.datasets[0].data = []; chart.update();
+    step=0;
+});
+
 // Play button functionality
 document.getElementById('playButton').addEventListener('click', () => {
     if (timer) {
@@ -207,26 +248,29 @@ document.getElementById('playButton').addEventListener('click', () => {
     } else {
         const frequency = document.getElementById('frequencySlider').value;
         timer = setInterval(() => {
-            const randomNumber = Math.random() * 100; // Generate a number between 0 and 100
-            let element = 'spirit';
-            if (randomNumber < 25) {
-                // structure = air(structure); // 30% chance for air
-                structure = LoFCancel(structure)
-                element = '=[[]]'
-            } else if (randomNumber < 50) {
-                // structure = fire(structure); // Additional 30% chance for fire
-                structure = LoFConfirm(structure)
-                element = '[A]=[A][A]'
-            } else if (randomNumber < 75) {
-                // structure = water(structure); // Additional 20% chance for water
-                structure = LoFCondense(structure)
-                element = '[A][A]=[A]'
-            } else {
-                // structure = earth(structure); // Remaining 20% chance for earth
-                structure = LofCompensate(structure)
-                element = '[[A]]=A'
+
+            const lof = [LoFCancel, LofCompensate, LoFCondense, LoFConfirm]
+            const execution_distribution = lof_policy.lof_weights; //  [3, 1, 3, 3]
+
+            // Create an array to hold the weighted functions
+            let weightedFunctions = [];
+
+            // Populate the weightedFunctions array based on the execution_distribution
+            for (let i = 0; i < execution_distribution.length; i++) {
+                for (let j = 0; j < execution_distribution[i]; j++) {
+                    weightedFunctions.push(i);
+                }
             }
-            updateMetrics(element);
+
+            // Function to randomly select and execute a function based on the distribution
+            function executeRandomFunction() {
+                const randomIndex = Math.floor(Math.random() * weightedFunctions.length);
+                structure = lof[weightedFunctions[randomIndex]](structure);
+                updateMetrics(lof[weightedFunctions[randomIndex]]);
+            }
+
+            executeRandomFunction();
+            
             redrawCanvas();
         }, 1000 / frequency);
     }
@@ -309,6 +353,7 @@ function drawSquares(ctx, x, y, size, structure, path = [], highlightPath = null
         }
     });
 }
+
 
 
 function onCanvasClick(e) {
@@ -503,7 +548,7 @@ function initializeChartScatter() {
                     }
                 },
                 y: {
-                    type: 'logarithmic',
+                    type: 'linear', // logarithmic
                     position: 'left',
                     title: {
                         display: true,
@@ -622,3 +667,32 @@ document.getElementById('exportCsvButton').addEventListener('click', () => {
     link.click();
     document.body.removeChild(link);
 });
+
+// Handle zoom
+canvas.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const mousex = event.clientX - canvas.getBoundingClientRect().left;
+    const mousey = event.clientY - canvas.getBoundingClientRect().top;
+    const wheel = event.deltaY < 0 ? 1.1 : 0.9;
+    const newScale = scale * wheel;
+
+    // Translate so the origin will be the mouse coordinates
+    originx -= mousex / scale - mousex / newScale;
+    originy -= mousey / scale - mousey / newScale;
+
+    // Scale the canvas
+    scale = newScale;
+
+    // Redraw
+    draw();
+});
+
+function toggleScale() {
+    const currentXScaleType = chart.options.scales.x.type;
+    const newScaleType = currentXScaleType === 'linear' ? 'logarithmic' : 'linear';
+    chart.options.scales.x.type = newScaleType;
+    chart.options.scales.y.type = newScaleType;
+    chart.update();
+}
+
+document.getElementById('toggleScaleButton').addEventListener('click', toggleScale);

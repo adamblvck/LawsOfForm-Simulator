@@ -1,4 +1,7 @@
 function LoFCancel(nestedArray) {
+
+    console.log("WTF");
+
     // Helper function to flatten and find all bracket pairs
     function findBracketPairs(arr, parentIndex = []) {
         let pairs = [];

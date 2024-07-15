@@ -20,7 +20,7 @@
     color: #ccc;
 }
 
-#playButton {
+#playButton, #clearButton, #toggleScaleButton {
 	border-radius: 15px;
     border-color: #ccc;
     color: #ccc;

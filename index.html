@@ -17,13 +17,17 @@
             <option value="sibling">Add Sibling</option>
         </select>
         <button id="playButton">Play</button>
+        
         <input type="range" id="frequencySlider" min="2" max="800" value="450">
-        <span id="frequencyDisplay">1 Hz</span>
+        <span id="frequencyDisplay">400 Hz</span>
         <span id="stepCounter">Steps: 0</span>
         <button id="exportCsvButton">Save CSV</button>
 
         <span id="metric-avg-depth">---</span>
         <span id="metric-avg-entropy">---</span>
+
+        <button id="clearButton">Clear</button>
+        <button id="toggleScaleButton">Toggle Log</button>
         
     </div>
 
@@ -33,11 +37,34 @@
     <!-- Main content -->
     <div id="maincontent">
         <div id="container">
-            <canvas id="myCanvas" width="100%" height="100%"></canvas>
+            <canvas id="myCanvas" width="200%" height="200%"></canvas>
         </div>
         <div id="chartContainer">
             <canvas id="myChart"></canvas>
         </div>
+
+        <div class="control-center">
+            <h2>Probably of<br>Operation / Step</h2>
+            <div class="sliders-section">
+                <div class="slider-container">
+                    <p>[[ ]] =  <span id="percent1">10%</span></p>
+                    <input type="range" min="0" max="10" value="1" class="slider" id="slider1">
+                </div>
+                <div class="slider-container">
+                    <p>=[[ ]]  <span id="percent2">10%</span></p>
+                    <input type="range" min="0" max="10" value="1" class="slider" id="slider2">
+                </div>
+                <div class="slider-container">
+                    <p>[][] = []  <span id="percent3">10%</span></p>
+                    <input type="range" min="0" max="10" value="1" class="slider" id="slider3">
+                </div>
+                <div class="slider-container">
+                    <p>[] = [][]  <span id="percent4">10%</span></p>
+                    <input type="range" min="0" max="10" value="1" class="slider" id="slider4">
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script type="module" src="./js/lodash.min.js"></script>
