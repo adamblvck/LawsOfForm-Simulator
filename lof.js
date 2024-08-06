@@ -1,4 +1,5 @@
 // var _ = require('lodash');
+// this files contains faulty transformations, but results in very interesting patterns
 
 // Utility Function: Compare if two objects or arrays are equal
 function areEqualObjects(obj1, obj2) {

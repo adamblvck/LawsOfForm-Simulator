@@ -1,7 +1,7 @@
 // const { calculateAssemblyIndex} = require('./assembley.js');
 
 const lof_policy = {
-    lof_weights: [1, 1, 1, 1]
+    lof_weights: [1, 1, 1, 1, 0]
 };
 
 const sliders = document.querySelectorAll('.slider');
@@ -9,7 +9,8 @@ const percents = [
     document.getElementById('percent1'),
     document.getElementById('percent2'),
     document.getElementById('percent3'),
-    document.getElementById('percent4')
+    document.getElementById('percent4'),
+    document.getElementById('percent5'),
 ];
 
 sliders.forEach((slider, index) => {
@@ -249,7 +250,7 @@ document.getElementById('playButton').addEventListener('click', () => {
         const frequency = document.getElementById('frequencySlider').value;
         timer = setInterval(() => {
 
-            const lof = [LoFCancel, LofCompensate, LoFCondense, LoFConfirm]
+            const lof = [LoFCancel, LofCompensate, LoFCondense, LoFConfirm, LoFMeasure]
             const execution_distribution = lof_policy.lof_weights; //  [3, 1, 3, 3]
 
             // Create an array to hold the weighted functions
