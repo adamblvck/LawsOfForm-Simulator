@@ -44,18 +44,18 @@ function LoFCancel(nestedArray) {
 
 // Test cases
 {
-let testCase1 = [[[]]];
-let testCase2 = [[[]], [[]]];
-let testCase3 = [[[], []], []];
-let testCase4 = [[], [[]]];
-let testCase5 = [[[[[]]]]];
-let testCase6 = [[[[[]]]],[[[[], [[[[]]]]]]]];
+    let testCase1 = [[[]]];
+    let testCase2 = [[[]], [[]]];
+    let testCase3 = [[[], []], []];
+    let testCase4 = [[], [[]]];
+    let testCase5 = [[[[[]]]]];
+    let testCase6 = [[[[[]]]],[[[[], [[[[]]]]]]]];
 
-console.log(JSON.stringify(LoFCancel(testCase1))); // Output: []
-console.log(JSON.stringify(LoFCancel(testCase2))); // Output: [[[]]]
-console.log(JSON.stringify(LoFCancel(testCase3))); // Output: [[[]], []]
-console.log(JSON.stringify(LoFCancel(testCase4))); // Output: [[]]
-console.log(JSON.stringify(LoFCancel(testCase5))); // Output: [[[[]]]]
-console.log(JSON.stringify(LoFCancel(testCase6))); // Output: [[[[]]]]
-console.log(JSON.stringify(LoFCancel(testCase6))); // Output: [[[[]]]]
-}
+    console.log(JSON.stringify(LoFCancel(testCase1))); // Output: []
+    console.log(JSON.stringify(LoFCancel(testCase2))); // Output: [[[]]]
+    console.log(JSON.stringify(LoFCancel(testCase3))); // Output: [[[]], []]
+    console.log(JSON.stringify(LoFCancel(testCase4))); // Output: [[]]
+    console.log(JSON.stringify(LoFCancel(testCase5))); // Output: [[[[]]]]
+    console.log(JSON.stringify(LoFCancel(testCase6))); // Output: [[[[]]]]
+    console.log(JSON.stringify(LoFCancel(testCase6))); // Output: [[[[]]]]
+    }

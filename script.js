@@ -46,6 +46,31 @@ function formCount(structure) {
     return countSubarrays(structure);
 }
 
+function assemblyIndexExact(node) {
+    const memo = new Map();
+    const keyOf = x => JSON.stringify(x); // ordered trees
+  
+    function cost(t) {
+      const k = keyOf(t);
+      if (memo.has(k)) return memo.get(k);
+      if (!Array.isArray(t) || t.length === 0) { memo.set(k, 1); return 1; } // leaf []
+      // group children by canonical form
+      const counts = new Map(), reps = new Map();
+      for (const child of t) {
+        const ck = keyOf(child);
+        counts.set(ck, (counts.get(ck) || 0) + 1);
+        if (!reps.has(ck)) reps.set(ck, child);
+      }
+      let total = 1; // make this parent (wrap)
+      for (const [ck, m] of counts.entries()) {
+        total += cost(reps.get(ck)) + (m - 1); // build one + clone the rest
+      }
+      memo.set(k, total);
+      return total;
+    }
+    return cost(node);
+  }
+
 function calculateAssemblyIndex(structure) {
     // Helper function to determine the type of structure
     function getType(array) {
@@ -209,10 +234,120 @@ function calculateEntropy(structure) {
     return entropy;
 }
 
+function calculateContextAwareEntropy(structure) {
+    let pathCounts = {};
+    let totalPaths = 0;
+
+    function traverseStructure(structure, path = '') {
+        if (!Array.isArray(structure)) return;
+        
+        pathCounts[path] = (pathCounts[path] || 0) + 1;
+        totalPaths++;
+        
+        structure.forEach((subStructure, index) => {
+            traverseStructure(subStructure, path ? `${path}.${index}` : `${index}`);
+        });
+    }
+    
+    traverseStructure(structure);
+
+    let entropy = 0;
+    Object.values(pathCounts).forEach(count => {
+        let probability = count / totalPaths;
+        entropy -= probability * Math.log2(probability);
+    });
+
+    return entropy;
+}
+
+function degreeEntropy(structure) {
+    const counts = new Map();
+    let N = 0;
+
+    (function walk(t) {
+        if (!Array.isArray(t)) return;
+        const deg = t.length;
+        counts.set(deg, (counts.get(deg) || 0) + 1);
+        N++;
+        for (const c of t) walk(c);
+    })(structure);
+
+    let H = 0;
+    counts.forEach(v => {
+        const p = v / N;
+        H -= p * Math.log2(p);
+    });
+    return H;
+}
+
+// Drop-in: replace your calculateContextAwareEntropy(...) if you want this one as "entropy"
+function subtreeEntropy(structure) {
+    const counts = new Map();
+    let N = 0;
+
+    function canon(t) {
+        // Ordered canonical form built from children’s canonical forms
+        const childKeys = t.map(canon);               // recurse first
+        const key = '[' + childKeys.join('') + ']';   // compact ordered key
+        counts.set(key, (counts.get(key) || 0) + 1);
+        N++;
+        return key;
+    }
+
+    if (!Array.isArray(structure)) return 0;
+    canon(structure);
+
+    let H = 0;
+    counts.forEach(v => {
+        const p = v / N;
+        H -= p * Math.log2(p);
+    });
+    return H;
+}
+
 function calculateMaxDepth(structure, currentDepth = 0) {
     if (!Array.isArray(structure) || structure.length === 0) return currentDepth;
     return Math.max(...structure.map(sub => calculateMaxDepth(sub, currentDepth + 1)));
 }
+
+function duplicatePressure(structure) {
+    function log2Fact(n){ let r=0; for (let i=2;i<=n;i++) r+=Math.log2(i); return r; }
+    let L = 0;
+    (function visit(node){
+      if (!Array.isArray(node)) return;
+      const map = new Map();
+      for (const child of node) {
+        const k = JSON.stringify(child);
+        map.set(k, (map.get(k)||0) + 1);
+      }
+      for (const m of map.values()) if (m > 1) L += log2Fact(m);
+      for (const c of node) visit(c);
+    })(structure);
+    return L;
+  }
+
+function sackin(structure) {
+    let S = 0, L = 0;
+    (function walk(node, d) {
+      if (!Array.isArray(node)) return;
+      if (node.length === 0) { S += d; L++; }
+      for (const c of node) walk(c, d + 1);
+    })(structure, 0);
+    return { S, L, meanLeafDepth: L ? S / L : 0 };
+  }
+
+function energyDiluted(structure, {alpha=1, gamma=0, hbar=1} = {}) {
+    let E = 0;
+    function walk(node, depth, parentDeg) {
+      if (!Array.isArray(node)) return;
+      const k = parentDeg ?? 1; // root has no parent; avoid /0
+      E += hbar / Math.pow(1 + depth, alpha) / Math.pow(k, gamma);
+      const deg = node.length;
+      for (const child of node) walk(child, depth + 1, deg);
+    }
+    if (Array.isArray(structure)) walk(structure, 0, null);
+    return E;
+  }
 
 // Update step counter display
 function updateStepCounter() {
@@ -429,6 +564,15 @@ function addSibling(path, moment) {
     parent.splice(siblingIndex, 0, []);
 }
 
+function hortonStrahler(node) {
+    if (!Array.isArray(node)) return 0;
+    if (node.length === 0) return 1;
+    const orders = node.map(hortonStrahler);
+    const m = Math.max(...orders);
+    const c = orders.filter(x => x === m).length;
+    return c >= 2 ? m + 1 : m;
+  }
+
 function redrawCanvas(highlightPath = null) {
     setCanvasSize(ctx.canvas);
 
@@ -466,9 +610,14 @@ const update_chart_data = async (chart) => {
 }
 
 function updateMetrics(element) {
-    const entropy = calculateEntropy(structure);
+    // const entropy = calculateContextAwareEntropy(structure); // calculateEntropy
+
+    // const entropy = degreeEntropy(structure); // shanon
+    const entropy = subtreeEntropy(structure); // measures the entropy over the multiset of subtree types.
+
     const maxDepth = calculateMaxDepth(structure);
-    const assembley = calculateAssemblyIndex(structure);
+    // const assembley = calculateAssemblyIndex(structure);
+    const assembley = assemblyIndexExact(structure);
     const omega = calculateOmega(structure);
     const order = formCount(structure);
     metrics.push({ step, element, entropy, maxDepth, assembley, omega, order});

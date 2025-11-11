@@ -44,7 +44,33 @@ export function calculateAssemblyIndex(structure) {
     return assemblySteps(structure);
 }
 
+// GPT 5 generated
+function assemblyIndexExact(node) {
+    const memo = new Map();
+    const keyOf = x => JSON.stringify(x); // ordered trees
+  
+    function cost(t) {
+      const k = keyOf(t);
+      if (memo.has(k)) return memo.get(k);
+      if (!Array.isArray(t) || t.length === 0) { memo.set(k, 1); return 1; } // leaf []
+      // group children by canonical form
+      const counts = new Map(), reps = new Map();
+      for (const child of t) {
+        const ck = keyOf(child);
+        counts.set(ck, (counts.get(ck) || 0) + 1);
+        if (!reps.has(ck)) reps.set(ck, child);
+      }
+      let total = 1; // make this parent (wrap)
+      for (const [ck, m] of counts.entries()) {
+        total += cost(reps.get(ck)) + (m - 1); // build one + clone the rest
+      }
+      memo.set(k, total);
+      return total;
+    }
+    return cost(node);
+  }
+
 // Example usage
 const nestedArray = [[[], [[], [[]]]]];
-const assemblyIndex = calculateAssemblyIndex(nestedArray);
+const assemblyIndex = assemblyIndexExact(nestedArray);
 console.log(`Assembly Index: ${assemblyIndex}`);
