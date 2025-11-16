@@ -1,0 +1,24 @@
+{
+  "name": "lof_entropy",
+  "version": "1.0.0",
+  "description": "Research suite for Laws of Form entropy studies + Vite dashboard",
+  "private": true,
+  "scripts": {
+    "install:app": "npm --prefix app install",
+    "dev": "npm --prefix app run dev",
+    "build": "npm --prefix app run build",
+    "preview": "npm --prefix app run preview",
+    "test": "npm --prefix app run test",
+    "lint": "npm --prefix app run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamblvck/lof_editor_0.git"
+  },
+  "author": "Adam Blvck",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adamblvck/lof_editor_0/issues"
+  },
+  "homepage": "https://github.com/adamblvck/lof_editor_0#readme"
+}
