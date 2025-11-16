@@ -40,12 +40,21 @@
             <canvas id="myCanvas" width="200%" height="200%"></canvas>
         </div>
         <div id="chartContainer">
+            <div class="chart-controls">
+                <label for="metric-x-select">X Axis</label>
+                <select id="metric-x-select"></select>
+                <label for="metric-y-select">Y Axis</label>
+                <select id="metric-y-select"></select>
+            </div>
             <canvas id="myChart"></canvas>
         </div>
 
-        <div class="control-center">
-            <h2>Probability of<br>Operation / Step</h2>
-            <div class="sliders-section">
+        <div class="control-center" id="controlPanel">
+            <div class="control-center-header">
+                <h2>Probability of<br>Operation / Step</h2>
+                <button id="controlPanelToggle" type="button">Collapse</button>
+            </div>
+            <div class="sliders-section" id="controlPanelContent">
                 <div class="slider-container">
                     <p>[[ ]] =  <span id="percent1">10%</span></p>
                     <input type="range" min="0" max="10" value="1" class="slider" id="slider1">
@@ -67,6 +76,12 @@
                     <input type="range" min="0" max="10" value="0" class="slider" id="slider4">
                 </div>
             </div>
+        </div>
+
+        <div class="action-metrics">
+            <h2>Action Metric Insights</h2>
+            <div id="action-metric-summary" class="metric-summary"></div>
+            <div id="action-metric-charts" class="metric-charts"></div>
         </div>
 
     </div>

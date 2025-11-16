@@ -349,6 +349,67 @@ function energyDiluted(structure, {alpha=1, gamma=0, hbar=1} = {}) {
     return E;
   }
 
+const METRICS_CONFIG = [
+    { id: 'entropy', label: 'Subtree Entropy', compute: subtreeEntropy },
+    { id: 'degreeEntropy', label: 'Degree Entropy', compute: degreeEntropy },
+    { id: 'maxDepth', label: 'Max Depth', compute: calculateMaxDepth },
+    { id: 'assembley', label: 'Assembly Index', compute: assemblyIndexExact },
+    { id: 'omega', label: 'Omega', compute: calculateOmega },
+    { id: 'order', label: 'Order', compute: formCount },
+    { id: 'energyDiluted', label: 'Energy (Diluted)', compute: energyDiluted },
+    { id: 'hortonStrahler', label: 'Horton-Strahler', compute: hortonStrahler },
+    { id: 'sackinMeanDepth', label: 'Sackin Mean Leaf Depth', compute: (structure) => sackin(structure).meanLeafDepth },
+    { id: 'duplicatePressure', label: 'Duplicate Pressure', compute: duplicatePressure },
+];
+
+const METRICS_BY_ID = METRICS_CONFIG.reduce((acc, config) => {
+    acc[config.id] = config;
+    return acc;
+}, {});
+
+function computeMetricsSnapshot(currentStructure) {
+    const snapshot = {};
+    METRICS_CONFIG.forEach(({ id, compute }) => {
+        try {
+            snapshot[id] = compute(currentStructure);
+        } catch (error) {
+            console.warn(`Metric computation failed for ${id}`, error);
+            snapshot[id] = null;
+        }
+    });
+    return snapshot;
+}
+
+function calculateMetricDeltas(beforeSnapshot, afterSnapshot) {
+    const deltas = {};
+    METRICS_CONFIG.forEach(({ id }) => {
+        const before = beforeSnapshot?.[id];
+        const after = afterSnapshot?.[id];
+        deltas[id] = (typeof before === 'number' && typeof after === 'number') ? after - before : null;
+    });
+    return deltas;
+}
+
+function getMetricSeries(metricId, phase = 'after') {
+    if (!METRICS_BY_ID[metricId]) {
+        console.warn(`Metric ${metricId} is not registered`);
+        return [];
+    }
+    return metrics.map((entry) => {
+        if (phase === 'before') {
+            return entry.before?.[metricId] ?? null;
+        }
+        if (phase === 'delta') {
+            return entry.deltas?.[metricId] ?? null;
+        }
+        return entry.after?.[metricId] ?? null;
+    });
+}
+
+function getMetricLabel(metricId) {
+    return METRICS_BY_ID[metricId]?.label ?? metricId;
+}
+
 // Update step counter display
 function updateStepCounter() {
     document.getElementById('stepCounter').textContent = `Steps: ${step}`;
@@ -401,8 +462,20 @@ document.getElementById('playButton').addEventListener('click', () => {
             // Function to randomly select and execute a function based on the distribution
             function executeRandomFunction() {
                 const randomIndex = Math.floor(Math.random() * weightedFunctions.length);
-                structure = lof[weightedFunctions[randomIndex]](structure);
-                updateMetrics(lof[weightedFunctions[randomIndex]]);
+                const selectedOperation = lof[weightedFunctions[randomIndex]];
+                const elementName = selectedOperation?.name || `operation_${weightedFunctions[randomIndex]}`;
+                if (typeof selectedOperation !== 'function') {
+                    console.warn('Selected operation is not callable', weightedFunctions[randomIndex]);
+                    return;
+                }
+                const metricsBefore = computeMetricsSnapshot(structure);
+                structure = selectedOperation(structure);
+                const metricsAfter = computeMetricsSnapshot(structure);
+                updateMetrics({
+                    elementName,
+                    metricsBefore,
+                    metricsAfter,
+                });
             }
 
             executeRandomFunction();
@@ -605,43 +678,52 @@ const calculateAverages = () => {
 
 }
 
-const update_chart_data = async (chart) => {
-    chart.data.datasets[0].data.push({x: metrics[metrics.length-1].entropy, y: metrics[metrics.length-1].assembley});
+const update_chart_data = async (chart, entry) => {
+    if (!chart || !entry) {
+        return;
+    }
+    const point = buildScatterPoint(entry);
+    if (!point) {
+        return;
+    }
+    chart.data.datasets[0].data.push(point);
+    const currentStep = entry.step;
+    const shouldUpdate =
+        scatterLastUpdateStep === null ||
+        currentStep - scatterLastUpdateStep >= 20 ||
+        currentStep < 20;
+    if (shouldUpdate) {
+        chart.update('none');
+        scatterLastUpdateStep = currentStep;
+    }
 }
 
-function updateMetrics(element) {
-    // const entropy = calculateContextAwareEntropy(structure); // calculateEntropy
+function updateMetrics({ elementName, metricsBefore, metricsAfter }) {
+    const currentStep = step;
+    const entry = {
+        step: currentStep,
+        element: elementName,
+        before: metricsBefore,
+        after: metricsAfter,
+        deltas: calculateMetricDeltas(metricsBefore, metricsAfter),
+        ...metricsAfter,
+    };
 
-    // const entropy = degreeEntropy(structure); // shanon
-    const entropy = subtreeEntropy(structure); // measures the entropy over the multiset of subtree types.
+    metrics.push(entry);
 
-    const maxDepth = calculateMaxDepth(structure);
-    // const assembley = calculateAssemblyIndex(structure);
-    const assembley = assemblyIndexExact(structure);
-    const omega = calculateOmega(structure);
-    const order = formCount(structure);
-    metrics.push({ step, element, entropy, maxDepth, assembley, omega, order});
+    recordActionMetricDelta(entry);
 
-    // if (step % 20 == 0){
-    //     chart.data.labels.push(step);
-    //     chart.data.datasets[0].data.push(entropy);
-    //     chart.data.datasets[1].data.push(maxDepth);
-    //     chart.data.datasets[2].data.push(assembley);
-    //     chart.data.datasets[3].data.push(omega);
-    //     chart.data.datasets[4].data.push(order);
-    //     chart.update();
-    // }
+    update_chart_data(chart, entry);
 
-    update_chart_data(chart)
-
-    if (step % 100 == 0){
-        chart.update();
+    if (currentStep % 100 === 0){
+        calculateAverages();
+        updateRealtimeMetrics();
     }
 
     step++; // Increment step counter
     updateStepCounter();
 
-    if (step % 100 == 0){
+    if (step % 100 === 0){
         calculateAverages();
         updateRealtimeMetrics();
     }
@@ -671,14 +753,33 @@ redrawCanvas();
 
 // INIT CHART
 let chart = null;
+const DEFAULT_SCATTER_METRICS = { x: 'entropy', y: 'assembley' };
+let scatterMetricSelection = { ...DEFAULT_SCATTER_METRICS };
+let metricSelectors = { x: null, y: null };
+let actionMetricsUI = { summary: null, charts: null };
+const ACTION_METRIC_TARGETS = ['entropy', 'maxDepth', 'assembley', 'energyDiluted', 'duplicatePressure'];
+const ACTION_COLOR_PALETTE = [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)'
+];
+const ACTION_HISTORY_LIMIT = 400;
+let actionColorMap = {};
+let actionMetricAggregates = {};
+let actionMetricCharts = {};
+let scatterLastUpdateStep = null;
 
 function initializeChartScatter() {
     const ctx = document.getElementById('myChart').getContext('2d');
+    const xLabel = getMetricLabel(scatterMetricSelection.x);
+    const yLabel = getMetricLabel(scatterMetricSelection.y);
     chart = new Chart(ctx, {
         type: 'scatter',
         data: {
             datasets: [{
-                label: 'Entropy vs Assembly',
+                label: `${xLabel} vs ${yLabel}`,
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',
                 data: [],  // Initialize with empty data array
@@ -694,7 +795,7 @@ function initializeChartScatter() {
                     position: 'bottom',
                     title: {
                         display: true,
-                        text: 'Entropy'
+                        text: xLabel
                     }
                 },
                 y: {
@@ -702,7 +803,7 @@ function initializeChartScatter() {
                     position: 'left',
                     title: {
                         display: true,
-                        text: 'Assembly',
+                        text: yLabel,
                     }
                 }
             },
@@ -717,8 +818,322 @@ function initializeChartScatter() {
             }
         }
     });
+    updateScatterChartAxes();
 }
 
+function updateScatterChartAxes() {
+    if (!chart) {
+        return;
+    }
+    const xLabel = getMetricLabel(scatterMetricSelection.x);
+    const yLabel = getMetricLabel(scatterMetricSelection.y);
+    if (chart.options?.scales?.x?.title) {
+        chart.options.scales.x.title.text = xLabel;
+    }
+    if (chart.options?.scales?.y?.title) {
+        chart.options.scales.y.title.text = yLabel;
+    }
+    if (chart.data?.datasets?.[0]) {
+        chart.data.datasets[0].label = `${xLabel} vs ${yLabel}`;
+    }
+}
+
+function buildScatterPoint(entry) {
+    if (!entry) {
+        return null;
+    }
+    const xValue = entry[scatterMetricSelection.x];
+    const yValue = entry[scatterMetricSelection.y];
+    if (typeof xValue !== 'number' || typeof yValue !== 'number') {
+        return null;
+    }
+    return { x: xValue, y: yValue };
+}
+
+function rebuildScatterDataset() {
+    if (!chart) {
+        return;
+    }
+    chart.data.datasets[0].data = metrics
+        .map(buildScatterPoint)
+        .filter((point) => point !== null);
+    updateScatterChartAxes();
+    scatterLastUpdateStep = null;
+    chart.update();
+}
+
+function populateMetricSelect(selectElement, selectedValue) {
+    if (!selectElement) {
+        return;
+    }
+    selectElement.innerHTML = '';
+    METRICS_CONFIG.forEach(({ id, label }) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = label;
+        if (id === selectedValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+}
+
+function handleScatterMetricChange(axis, metricId) {
+    if (!METRICS_BY_ID[metricId]) {
+        return;
+    }
+    scatterMetricSelection = {
+        ...scatterMetricSelection,
+        [axis]: metricId,
+    };
+    rebuildScatterDataset();
+}
+
+function initializeMetricSelectors() {
+    metricSelectors = {
+        x: document.getElementById('metric-x-select'),
+        y: document.getElementById('metric-y-select'),
+    };
+    populateMetricSelect(metricSelectors.x, scatterMetricSelection.x);
+    populateMetricSelect(metricSelectors.y, scatterMetricSelection.y);
+
+    if (metricSelectors.x) {
+        metricSelectors.x.addEventListener('change', (event) => {
+            handleScatterMetricChange('x', event.target.value);
+        });
+    }
+
+    if (metricSelectors.y) {
+        metricSelectors.y.addEventListener('change', (event) => {
+            handleScatterMetricChange('y', event.target.value);
+        });
+    }
+
+    updateScatterChartAxes();
+}
+
+function initializeActionMetricsUI() {
+    actionMetricsUI = {
+        summary: document.getElementById('action-metric-summary'),
+        charts: document.getElementById('action-metric-charts'),
+    };
+    if (actionMetricsUI.charts) {
+        initializeActionMetricCharts();
+        updateActionMetricCharts();
+    }
+    if (actionMetricsUI.summary) {
+        updateActionMetricSummary();
+    }
+}
+
+function initializeActionMetricCharts() {
+    actionMetricCharts = {};
+    if (!actionMetricsUI.charts) {
+        return;
+    }
+    actionMetricsUI.charts.innerHTML = '';
+    ACTION_METRIC_TARGETS.forEach((metricId) => {
+        const metricWrapper = document.createElement('div');
+        metricWrapper.className = 'metric-chart-card';
+
+        const title = document.createElement('h3');
+        title.textContent = `${getMetricLabel(metricId)} Δ`;
+        metricWrapper.appendChild(title);
+
+        const canvas = document.createElement('canvas');
+        canvas.id = `action-metric-chart-${metricId}`;
+        canvas.height = 200;
+        metricWrapper.appendChild(canvas);
+
+        actionMetricsUI.charts.appendChild(metricWrapper);
+
+        const ctx = canvas.getContext('2d');
+        actionMetricCharts[metricId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                parsing: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Step',
+                        },
+                    },
+                    y: {
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Average Δ',
+                        },
+                    },
+                },
+            },
+        });
+    });
+}
+
+function getActionColor(actionName, alpha = 1) {
+    if (!actionColorMap[actionName]) {
+        const index = Object.keys(actionColorMap).length % ACTION_COLOR_PALETTE.length;
+        actionColorMap[actionName] = ACTION_COLOR_PALETTE[index];
+    }
+    const base = actionColorMap[actionName];
+    if (alpha === 1) {
+        return base;
+    }
+    const rgbaMatch = base.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([0-9.]+)\)$/);
+    if (!rgbaMatch) {
+        return base;
+    }
+    const [, r, g, b] = rgbaMatch;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getActionMetricAggregate(actionName, metricId) {
+    if (!actionMetricAggregates[actionName]) {
+        actionMetricAggregates[actionName] = {};
+    }
+    if (!actionMetricAggregates[actionName][metricId]) {
+        actionMetricAggregates[actionName][metricId] = {
+            count: 0,
+            sum: 0,
+            sumSq: 0,
+            avg: 0,
+            std: 0,
+            history: [],
+        };
+    }
+    return actionMetricAggregates[actionName][metricId];
+}
+
+function formatSigned(value, decimals = 3) {
+    if (!Number.isFinite(value)) {
+        return 'n/a';
+    }
+    const magnitude = Math.abs(value).toFixed(decimals);
+    if (value > 0) {
+        return `+${magnitude}`;
+    }
+    if (value < 0 || Object.is(value, -0)) {
+        return `-${magnitude}`;
+    }
+    return `+${magnitude}`;
+}
+
+function updateActionMetricSummary() {
+    if (!actionMetricsUI.summary) {
+        return;
+    }
+    actionMetricsUI.summary.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    Object.keys(actionMetricAggregates).forEach((actionName) => {
+        const metricsForAction = actionMetricAggregates[actionName];
+        const actionBlock = document.createElement('div');
+        actionBlock.className = 'action-summary-group';
+
+        const title = document.createElement('h3');
+        title.textContent = actionName;
+        actionBlock.appendChild(title);
+
+        METRICS_CONFIG.forEach(({ id, label }) => {
+            const stats = metricsForAction[id];
+            if (!stats || stats.count === 0) {
+                return;
+            }
+            const row = document.createElement('div');
+            row.className = 'action-summary-row';
+
+            const name = document.createElement('span');
+            name.textContent = `${label} Δ`;
+            row.appendChild(name);
+
+            const value = document.createElement('span');
+            value.textContent = `${formatSigned(stats.avg)} ± ${formatSigned(stats.std)}`;
+            row.appendChild(value);
+
+            actionBlock.appendChild(row);
+        });
+
+        fragment.appendChild(actionBlock);
+    });
+    actionMetricsUI.summary.appendChild(fragment);
+}
+
+function ensureActionDataset(metricId, actionName) {
+    const chartInstance = actionMetricCharts[metricId];
+    if (!chartInstance) {
+        return null;
+    }
+    let dataset = chartInstance.data.datasets.find((d) => d.label === actionName);
+    if (!dataset) {
+        const borderColor = getActionColor(actionName, 1);
+        dataset = {
+            label: actionName,
+            borderColor,
+            backgroundColor: getActionColor(actionName, 0.2),
+            fill: false,
+            data: [],
+            tension: 0.2,
+        };
+        chartInstance.data.datasets.push(dataset);
+    }
+    return dataset;
+}
+
+function updateActionMetricCharts() {
+    ACTION_METRIC_TARGETS.forEach((metricId) => {
+        const chartInstance = actionMetricCharts[metricId];
+        if (!chartInstance) {
+            return;
+        }
+        Object.keys(actionMetricAggregates).forEach((actionName) => {
+            const stats = actionMetricAggregates[actionName][metricId];
+            const dataset = ensureActionDataset(metricId, actionName);
+            if (!dataset || !stats) {
+                return;
+            }
+            // Cap the history to prevent runaway growth
+            stats.history = stats.history.slice(-ACTION_HISTORY_LIMIT);
+            dataset.data = stats.history.map((point) => ({ x: point.step, y: point.avg }));
+        });
+        chartInstance.update('none');
+    });
+}
+
+function recordActionMetricDelta(entry) {
+    const actionName = entry.element;
+    if (!actionName || !entry.deltas) {
+        return;
+    }
+    Object.keys(entry.deltas).forEach((metricId) => {
+        const delta = entry.deltas[metricId];
+        if (typeof delta !== 'number' || Number.isNaN(delta)) {
+            return;
+        }
+        const aggregate = getActionMetricAggregate(actionName, metricId);
+        aggregate.count += 1;
+        aggregate.sum += delta;
+        aggregate.sumSq += delta * delta;
+        aggregate.avg = aggregate.sum / aggregate.count;
+        const variance = aggregate.sumSq / aggregate.count - Math.pow(aggregate.avg, 2);
+        aggregate.std = variance > 0 ? Math.sqrt(variance) : 0;
+        aggregate.history.push({ step: entry.step, avg: aggregate.avg });
+        if (aggregate.history.length > ACTION_HISTORY_LIMIT) {
+            aggregate.history.shift();
+        }
+    });
+
+    updateActionMetricSummary();
+    updateActionMetricCharts();
+}
 
 function initializeChart() {
     const ctx = document.getElementById('myChart').getContext('2d');
@@ -786,19 +1201,39 @@ function initializeChart() {
 }
 
 function setCanvasSize(canvas) {
-    var parent = canvas.parentNode,
-        styles = getComputedStyle(parent),
-        w = parseInt(styles.getPropertyValue("width"), 10),
-        h = parseInt(styles.getPropertyValue("height"), 10);
+    var parent = canvas.parentNode;
+    var parentRect = parent.getBoundingClientRect();
+    var computedStyles = getComputedStyle(parent);
+    var width = parentRect.width || parseInt(computedStyles.getPropertyValue("width"), 10) || window.innerWidth * 0.5;
+    var height = parentRect.height || parseInt(computedStyles.getPropertyValue("height"), 10) || window.innerHeight * 0.5;
 
-    let s = Math.min(w,h);
+    if (!Number.isFinite(width) || width <= 0) {
+        width = window.innerWidth * 0.5;
+    }
 
-    canvas.width = s*.9;
-    canvas.height = s*.9;
+    if (!Number.isFinite(height) || height <= 0) {
+        height = width;
+    }
+
+    let s = Math.min(width, height);
+
+    canvas.width = s * .9;
+    canvas.height = s * .9;
 }
 
 // Initialize the chart when the page loads
-document.addEventListener('DOMContentLoaded', initializeChartScatter); // initializeChart
+document.addEventListener('DOMContentLoaded', () => {
+    initializeChartScatter(); // initializeChart
+    initializeMetricSelectors();
+    initializeActionMetricsUI();
+    rebuildScatterDataset();
+
+    const controlPanelToggle = document.getElementById('controlPanelToggle');
+    if (controlPanelToggle) {
+        controlPanelToggle.addEventListener('click', toggleControlPanel);
+        controlPanelToggle.setAttribute('aria-expanded', 'true');
+    }
+});
 
 document.getElementById('exportCsvButton').addEventListener('click', () => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -843,6 +1278,18 @@ function toggleScale() {
     chart.options.scales.x.type = newScaleType;
     chart.options.scales.y.type = newScaleType;
     chart.update();
+}
+
+function toggleControlPanel() {
+    const panel = document.getElementById('controlPanel');
+    const toggleButton = document.getElementById('controlPanelToggle');
+    if (!panel || !toggleButton) {
+        return;
+    }
+    panel.classList.toggle('collapsed');
+    const collapsed = panel.classList.contains('collapsed');
+    toggleButton.textContent = collapsed ? 'Expand' : 'Collapse';
+    toggleButton.setAttribute('aria-expanded', (!collapsed).toString());
 }
 
 document.getElementById('toggleScaleButton').addEventListener('click', toggleScale);
